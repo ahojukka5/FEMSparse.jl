@@ -1,5 +1,5 @@
-# This file is a part of JuliaFEM/SparseCOO
-# License is MIT: see https://github.com/JuliaFEM/SparseCOO.jl/blob/master/LICENSE.md
+# This file is a part of JuliaFEM.
+# License is MIT: see https://github.com/JuliaFEM/FEMSparse.jl/blob/master/LICENSE
 
 import Base: convert, size, full, resize!, empty!, isempty, isapprox, findnz, getindex, sparse
 import Base.SparseArrays: nnz, dropzeros!

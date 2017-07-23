@@ -1,5 +1,5 @@
-# This file is a part of JuliaFEM/FEMAssemble
-# License is MIT: see https://github.com/JuliaFEM/FEMAssemble.jl/blob/master/LICENSE.md
+# This file is a part of JuliaFEM.
+# License is MIT: see https://github.com/JuliaFEM/FEMSparse.jl/blob/master/LICENSE
 
 type SparseVectorDOK{Tv,Ti<:Integer} <: AbstractSparseArray{Tv,Ti<:Integer,1}
     data :: Dict{Ti,Tv}

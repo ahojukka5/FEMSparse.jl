@@ -3,13 +3,15 @@
 
 module FEMSparse
 
-include("SparseMatrixCOO.jl")
-include("SparseVectorCOO.jl")
-include("SparseVectorDOK.jl")
+include("sparsematrixcoo.jl")
+include("sparsevectorcoo.jl")
+include("sparsevectordok.jl")
 
-export SparseMatrixCOO,
-       SparseVectorCOO,
-       SparseVectorDOK,
+SparseMatrixFEM{Tv,Ti<:Integer} = SparseMatrixCOO{Tv,Ti}
+SparseVectorFEM{Tv,Ti<:Integer} = SparseVectorCOO{Tv,Ti}
+#include("assembly.jl")
+
+export SparseMatrixFEM,
        add!,
        get_nonzero_rows,
        get_nonzero_columns,

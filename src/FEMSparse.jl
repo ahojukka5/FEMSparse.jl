@@ -3,9 +3,9 @@
 
 module FEMSparse
 
-include("SparseMatrixCOO.jl")
-include("SparseVectorCOO.jl")
-include("SparseVectorDOK.jl")
+include("sparsematrixcoo.jl")
+include("sparsevectorcoo.jl")
+include("sparsevectordok.jl")
 
 export SparseMatrixCOO,
        SparseVectorCOO,

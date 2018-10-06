@@ -1,174 +1,89 @@
 # This file is a part of JuliaFEM.
 # License is MIT: see https://github.com/JuliaFEM/FEMSparse.jl/blob/master/LICENSE
 
-import Base: convert, size, full, resize!, empty!, isempty, isapprox, findnz, getindex, sparse
-import Base.SparseArrays: nnz, dropzeros!
-
-global const SPARSEMATRIXCOO_DEFAULT_BLOCK_SIZE = 1024*1024
-
-type SparseMatrixCOO{Tv,Ti<:Integer} <: AbstractSparseArray{Tv,Ti<:Integer,2}
+mutable struct SparseMatrixCOO{Tv,Ti<:Integer} <: AbstractSparseMatrix{Tv,Ti}
     I :: Vector{Ti}
     J :: Vector{Ti}
     V :: Vector{Tv}
-    cnt :: Int64
-    max_cnt :: Int64
-    blk_size :: Int64
 end
 
-function SparseMatrixCOO()
-    return SparseMatrixCOO(Int64[], Int64[], Float64[], 0, 0, SPARSEMATRIXCOO_DEFAULT_BLOCK_SIZE)
-end
+SparseMatrixCOO() = SparseMatrixCOO(Int[], Int[], Float64[])
+SparseMatrixCOO(A::SparseMatrixCSC{Tv,Ti}) where {Tv, Ti<:Integer} = SparseMatrixCOO(findnz(A)...)
+SparseMatrixCOO(A::Matrix) = SparseMatrixCOO(sparse(A))
+SparseArrays.SparseMatrixCSC(A::SparseMatrixCOO) = sparse(A.I, A.J, A.V)
+Base.isempty(A::SparseMatrixCOO) = isempty(A.I) && isempty(A.J) && isempty(A.V)
+Base.size(A::SparseMatrixCOO) = isempty(A) ? (0, 0) : (maximum(A.I), maximum(A.J))
+Base.size(A::SparseMatrixCOO, idx::Int) = size(A)[i]
+Base.Matrix(A::SparseMatrixCOO) = Matrix(SparseMatrixCSC(A))
 
-function SparseMatrixCOO{Tv,Ti<:Integer}(I::Vector{Ti}, J::Vector{Ti}, V::Vector{Tv})
-    @assert length(I) == length(J) == length(V)
-    return SparseMatrixCOO(I, J, V, length(V), length(V), SPARSEMATRIXCOO_DEFAULT_BLOCK_SIZE)
-end
+get_nonzero_rows(A::SparseMatrixCOO) = unique(A.I[findall(!iszero, A.V)])
+get_nonzero_columns(A::SparseMatrixCOO) = unique(A.J[findall(!iszero, A.V)])
 
-function SparseMatrixCOO{Tv,Ti<:Integer}(A::SparseMatrixCSC{Tv,Ti})
-    I, J, V = findnz(A)
-    return SparseMatrixCOO(I, J, V)
-end
-
-function convert{Tv,Ti<:Integer}(::Type{SparseMatrixCOO{Tv,Ti}}, A::SparseMatrixCSC{Tv,Ti})
-    I, J, V = findnz(A)
-    return SparseMatrixCOO(I, J, V)
-end
-
-function SparseMatrixCOO{T}(A::Matrix{T})
-    return SparseMatrixCOO(sparse(A))
-end
-
-function getindex(A::SparseMatrixCOO, I::Int64, J::Int64)
-    error("Indexing of SparseMatrixCOO is very ineffective and not implemented. Convert this to SparseMatrixCSC.")
-end
-
-function findnz(A::SparseMatrixCOO)
-    return (A.I[1:A.cnt], A.J[1:A.cnt], A.V[1:A.cnt])
-end
-
-function nnz(A::SparseMatrixCOO)
-    return nnz(sparse(A))
-end
-
-function size(A::SparseMatrixCOO)
-    isempty(A) && return (0, 0)
-    return maximum(A.I[1:A.cnt]), maximum(A.J[1:A.cnt])
-end
-
-function size(A::SparseMatrixCOO, idx::Int)
-    return size(A)[idx]
-end
-
-function full{Tv,Ti<:Integer}(A::SparseMatrixCOO{Tv,Ti}, args...)
-    if A.cnt == 0
-        return Matrix{Tv}()
+function Base.getindex(A::SparseMatrixCOO{Tv, Ti}, i::Ti, j::Ti) where {Tv, Ti}
+    if length(A.V) > 1_000_000
+        @warn("Performance warning: indexing of COO sparse matrix is slow.")
     end
-    return full(sparse(A, args...))
+    p = (A.I .== i) .& (A.J .== j)
+    return sum(A.V[p])
 end
 
-""" Return Julia default SparseMatrixCSC from SparseMatrixCOO. """
-function sparse(A::SparseMatrixCOO, args...)
-    return sparse(A.I[1:A.cnt], A.J[1:A.cnt], A.V[1:A.cnt], args...)
+"""
+    add!(A, i, j, v)
+
+Add new value to sparse matrix `A` to location (`i`,`j`).
+"""
+function add!(A::SparseMatrixCOO, i, j, v)
+    push!(A.I, i)
+    push!(A.J, j)
+    push!(A.V, v)
+    return nothing
 end
 
-""" Allocate (more) memory for I,J,V vectors of SparseMatrixCOO. """
-function allocate!(A::SparseMatrixCOO, N::Int)
-    if N < A.max_cnt
-        warn("Down-sizing SparseMatrixCOO")
-    end
-    A.max_cnt = N
-    resize!(A.I, A.max_cnt)
-    resize!(A.J, A.max_cnt)
-    resize!(A.V, A.max_cnt)
-    return A
-end
-
-""" Add new value to sparse matrix. """
-function add!{T}(A::SparseMatrixCOO{T}, I::Int, J::Int, V::T)
-    if A.cnt == A.max_cnt
-        allocate!(A, A.cnt+A.blk_size)
-    end
-    A.cnt += 1
-    @inbounds begin
-        A.I[A.cnt] = I
-        A.J[A.cnt] = J
-        A.V[A.cnt] = V
-    end
-    return A
-end
-
-function empty!(A::SparseMatrixCOO)
+function Base.empty!(A::SparseMatrixCOO)
     empty!(A.I)
     empty!(A.J)
     empty!(A.V)
-    A.cnt = 0
-    A.max_cnt = 0
-    return A
+    return nothing
 end
 
-""" Add one or more SparseMatrixCOOs to one SparseMatrixCOO. """
-function add!(A::SparseMatrixCOO, rest::SparseMatrixCOO...)
-    for B in rest
-        for (I, J, V) in zip(B.I[1:B.cnt], B.J[1:B.cnt], B.V[1:B.cnt])
-            add!(A, I, J, V)
-        end
-    end
-end
+"""
+    assemble!(K, dofs1, dofs2, Ke)
 
-function isempty(A::SparseMatrixCOO)
-    return A.cnt == 0
-end
+Assemble a local dense element matrix `Ke` to a global sparse matrix `K`, to the
+location given by lists of indices `dofs1` and `dofs2`.
 
-""" Add local element matrix to sparse matrix. This basically does:
+# Example
 
->>> A[dofs1, dofs2] = A[dofs1, dofs2] + data
+```julia
+dofs1 = [3, 4]
+dofs2 = [6, 7, 8]
+Ke = [5.0 6.0 7.0; 8.0 9.0 10.0]
+K = SparseMatrixCOO()
+assemble!(K, dofs1, dofs2, Ke)
+Matrix(K)
 
-Example
--------
+# output
 
->>> S = [3, 4]
->>> M = [6, 7, 8]
->>> data = Float64[5 6 7; 8 9 10]
->>> A = SparseMatrixCOO()
->>> add!(A, S, M, data)
->>> full(A)
 4x8 Array{Float64,2}:
  0.0  0.0  0.0  0.0  0.0  0.0  0.0   0.0
  0.0  0.0  0.0  0.0  0.0  0.0  0.0   0.0
  0.0  0.0  0.0  0.0  0.0  5.0  6.0   7.0
  0.0  0.0  0.0  0.0  0.0  8.0  9.0  10.0
-
+```
 """
-function add!(A::SparseMatrixCOO, dofs1::Vector{Int}, dofs2::Vector{Int}, data::Matrix)
-    n, m = size(data)
-    @assert length(dofs1) == n
-    @assert length(dofs2) == m
+function assemble_local_matrix!(A::SparseMatrixCOO, dofs1::AbstractVector{Int}, dofs2::AbstractVector{Int}, data)
+    n, m = length(dofs1), length(dofs2)
+    @assert length(data) == n*m
+    k = 1
     for j=1:m
         for i=1:n
-            @inbounds add!(A, dofs1[i], dofs2[j], data[i,j])
+            add!(A, dofs1[i], dofs2[j], data[k])
+            k += 1
         end
     end
     return nothing
 end
 
-""" Add sparse matrix of CSC to COO. """
-function add!(A::SparseMatrixCOO, B::SparseMatrixCSC)
-    I, J, V = findnz(B)
-    add!(A, I, J, V)
-end
-
-function get_nonzero_rows(A::SparseMatrixCOO)
-    nonzeros = find(A.V[1:A.cnt] .!= 0)
-    return unique(A.I[nonzeros])
-end
-
-function get_nonzero_columns(A::SparseMatrixCOO)
-    nonzeros = find(A.V[1:A.cnt] .!= 0)
-    return unique(A.J[nonzeros])
-end
-
-""" Remove row. """
-function remove_row!{Tv,Ti<:Integer}(A::SparseMatrixCOO{Tv,Ti}, dof::Int64)
-    indices = find(A.I[1:A.cnt] .== dof)
-    A.V[indices] = Tv(0)
+function add!(A::SparseMatrixCOO, dofs1::AbstractVector{Int}, dofs2::AbstractVector{Int}, data)
+    assemble_local_matrix!(A, dofs1, dofs2, data)
 end

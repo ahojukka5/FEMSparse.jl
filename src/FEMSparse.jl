@@ -3,17 +3,12 @@
 
 module FEMSparse
 
-include("sparsematrixcoo.jl")
-include("sparsevectorcoo.jl")
-include("sparsevectordok.jl")
+using SparseArrays
 
-export SparseMatrixCOO,
-       SparseVectorCOO,
-       SparseVectorDOK,
-       add!,
-       get_nonzero_rows,
-       get_nonzero_columns,
-       remove_row!,
-       remove_column!
+include("sparsematrixcoo.jl")
+#include("sparsevectorcoo.jl")
+#include("sparsevectordok.jl")
+
+export SparseMatrixCOO, add!
 
 end

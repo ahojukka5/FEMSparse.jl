@@ -21,6 +21,47 @@ dofs2 = [4, 5]
 K[dofs1, dofs2] += Ke
 ```
 
+## Performance test
+
+To demonstrate the performance of the package, Poisson problem in 1 dimension
+is assembled (see `examples/poisson1d.jl`) using three different strategies:
+1) assemble to dense matrix, like shown above
+2) assemble to sparse matrix of CSC format
+3) assemble to sparse matrix of COO format
+
+### Assembling to dense matrix
+
+```bash
+[ Info: Dense matrix:
+ 2.298 s (30004 allocations: 6.71 GiB)
+```
+
+Dense matrix is not suitable for global (sparse) assembly due to it's massive
+requirement of available memory.
+
+### Assembling to the sparse matrix format CSC (naive)
+
+```bash
+[ Info: Sparse matrix (CSC format):
+ 15.536 s (568673 allocations: 26.97 GiB)
+```
+
+`SparseMatrixCSC` is not suitable for (naive) assembly because the change of
+sparsity pattern is very expensive.
+
+### Assembling to the sparse matrix format COO
+
+```bash
+[ Info: Sparse matrix (COO format):
+ 5.854 ms (73 allocations: 9.89 MiB)
+```
+
+`SparseMatrixCOO` is suitable sparse format for assembling global matrices, yet
+it still have some shortcomings. In practice for solving linear system, COO format
+needs to be converted to CSC format and it costs. Thus it would be benefical to do
+first-time assembly in COO format, and after that store the sparsity pattern and
+move to use direct assembly to CSC format.
+
 [gitter-url]: https://gitter.im/JuliaFEM/JuliaFEM.jl
 
 [docs-latest-img]: https://img.shields.io/badge/docs-latest-blue.svg

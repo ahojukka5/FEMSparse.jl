@@ -13,7 +13,7 @@ SparseMatrixCOO(A::Matrix) = SparseMatrixCOO(sparse(A))
 SparseArrays.SparseMatrixCSC(A::SparseMatrixCOO) = sparse(A.I, A.J, A.V)
 Base.isempty(A::SparseMatrixCOO) = isempty(A.I) && isempty(A.J) && isempty(A.V)
 Base.size(A::SparseMatrixCOO) = isempty(A) ? (0, 0) : (maximum(A.I), maximum(A.J))
-Base.size(A::SparseMatrixCOO, idx::Int) = size(A)[i]
+Base.size(A::SparseMatrixCOO, idx::Int) = size(A)[idx]
 Base.Matrix(A::SparseMatrixCOO) = Matrix(SparseMatrixCSC(A))
 
 get_nonzero_rows(A::SparseMatrixCOO) = unique(A.I[findall(!iszero, A.V)])

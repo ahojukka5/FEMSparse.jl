@@ -39,7 +39,9 @@ is assembled (see `examples/poisson1d.jl`) using three different strategies:
 Dense matrix is not suitable for global (sparse) assembly due to it's massive
 requirement of available memory.
 
-### Assembling to the sparse matrix format CSC (naive)
+### Assembling to the sparse matrix format CSC
+
+### Naive attempt
 
 ```bash
 [ Info: Sparse matrix (CSC format):
@@ -48,6 +50,57 @@ requirement of available memory.
 
 `SparseMatrixCSC` is not suitable for (naive) assembly because the change of
 sparsity pattern is very expensive.
+
+#### Exisitng sparsity pattern
+
+However, if an existing "sparsity pattern" exist (a sparse matrix where the location sof all non zeros
+have already been allocated) it is possible to efficiently assemble directly into it.
+
+For example,
+
+```
+julia> K = sparse(Float64[1 0 1 1;
+                          0 1 0 1;
+                          1 0 1 0;
+                          1 1 0 1];)
+
+julia> fill!(K, 0.0)
+
+julia> K.colptr'
+1×5 LinearAlgebra.Adjoint{Int64,Array{Int64,1}}:
+ 1  3  5  7  9
+
+julia> K.rowval'
+1×8 LinearAlgebra.Adjoint{Int64,Array{Int64,1}}:
+ 1  3  2  4  1  3  2  4
+```
+
+Assembling into this sparsity pattern is now done by
+
+```
+dofs1 = [1, 3]
+dofs2 = [2, 4]
+dofs3 = [1, 4]
+Ke1 = ones(2, 2)
+Ke2 = ones(2, 2)
+Ke3 = ones(2, 2)
+assembler = FEMSparse.start_assemble(K)
+for (dofs, Ke) in zip([dofs1, dofs2, dofs3], [Ke1, Ke2, Ke3])
+    FEMSparse.assemble_local_matrix!(assembler, dofs, Ke)
+end
+```
+
+resulting in that the content of `K` (here shown as a dense matrix for clarity) contains.
+
+```
+4×4 Array{Float64,2}:
+ 2.0  0.0  1.0  1.0
+ 0.0  1.0  0.0  1.0
+ 1.0  0.0  1.0  0.0
+ 1.0  1.0  0.0  2.0
+```
+
+might be a sparsity pattern
 
 ### Assembling to the sparse matrix format COO
 
@@ -61,6 +114,7 @@ it still have some shortcomings. In practice for solving linear system, COO form
 needs to be converted to CSC format and it costs. Thus it would be benefical to do
 first-time assembly in COO format, and after that store the sparsity pattern and
 move to use direct assembly to CSC format.
+
 
 [gitter-url]: https://gitter.im/JuliaFEM/JuliaFEM.jl
 

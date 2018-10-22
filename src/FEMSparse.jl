@@ -8,6 +8,7 @@ using SparseArrays
 include("sparsematrixcoo.jl")
 #include("sparsevectorcoo.jl")
 #include("sparsevectordok.jl")
+include("sparsematrixcsc.jl")
 
 export SparseMatrixCOO, add!
 

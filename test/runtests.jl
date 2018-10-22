@@ -7,4 +7,8 @@ using Test
     @testset "test SparseMatrixCOO" begin
         include("test_sparsematrixcoo.jl")
     end
+    @testset "test SparseMatrixCOO" begin
+        include("test_sparsematrixcsc.jl")
+    end
 end
+

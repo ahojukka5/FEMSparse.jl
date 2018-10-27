@@ -1,20 +1,43 @@
 struct AssemblerSparsityPattern{Tv,Ti}
     K::SparseMatrixCSC{Tv,Ti}
+    f::Vector{Tv}
     permutation::Vector{Int}
     sorteddofs::Vector{Int}
 end
 
 """
-    start_assemble(K::SparseMatrixCSC)
+start_assemble(K::SparseMatrixCSC, [f::Vector])
 
-Create an `AssemblerSparsityPattern` from the sparsity pattern in `K`.
-Also, fill the values in `K` with 0.0.
+Create an `AssemblerSparsityPattern` from the sparsity pattern in `K`
+and optionally a "force" vector.
 """
-function start_assemble(K::SparseMatrixCSC)
-    fill!(K.nzval, 0.0)
-    AssemblerSparsityPattern(K, Int[], Int[])
+function start_assemble(K::SparseMatrixCSC, f = eltype(K)[])
+    if !isempty(f)
+        @assert size(K, 1) == length(f)
+    end
+    AssemblerSparsityPattern(K, f, Int[], Int[])
 end
 
+
+"""
+    assemble_local_vector!(f, dofs, fe)
+Assembles the element residual `fe` into the global residual vector `f`.
+"""
+Base.@propagate_inbounds function assemble_local_vector!(f::AbstractVector, dofs::AbstractVector{Int}, fe::AbstractVector)
+    @boundscheck checkbounds(f, dofs)
+    @inbounds for i in 1:length(dofs)
+        f[dofs[i]] += fe[i]
+    end
+end
+
+
+function assemble_local!(A::AssemblerSparsityPattern, dofs::AbstractVector, Ke::AbstractMatrix, fe::AbstractVector)
+    @assert !isempty(A.f)
+    @boundscheck checkbounds(A.K, dofs, dofs)
+    @boundscheck checkbounds(A.f, dofs)
+    @inbounds assemble_local_vector!(A.f, dofs, fe)
+    @inbounds assemble_local_matrix!(A, dofs, Ke)
+end
 
 """
     assemble!(A::AssemblerSparsityPattern, dofs2, Ke)
@@ -28,6 +51,7 @@ location given by lists of indices `dofs1` and `dofs2`.
 ```julia
 using SparseArrays
 sparsity_pattern = sparse([1. 0 1; 1 0 1; 1 1 1])
+fill!(sparsity_pattern, 0)
 assembler = FEMSparse.start_assemble(sparsity_pattern)
 dofs = [1, 3]
 Ke = [1.0 2.0; 3.0 4.0]
@@ -42,7 +66,7 @@ julia> Matrix(sparsity_pattern)
  3.0  0.0  4.0
 ```
 """
-function assemble_local_matrix!(A::AssemblerSparsityPattern, dofs::AbstractVector{Int}, Ke::AbstractMatrix)
+Base.@propagate_inbounds function assemble_local_matrix!(A::AssemblerSparsityPattern, dofs::AbstractVector{Int}, Ke::AbstractMatrix)
     permutation = A.permutation
     sorteddofs = A.sorteddofs
     K = A.K

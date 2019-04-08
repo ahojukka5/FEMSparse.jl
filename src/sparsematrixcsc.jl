@@ -6,7 +6,7 @@ struct AssemblerSparsityPattern{Tv,Ti}
 end
 
 """
-start_assemble(K::SparseMatrixCSC, [f::Vector])
+    start_assemble(K::SparseMatrixCSC, [f::Vector])
 
 Create an `AssemblerSparsityPattern` from the sparsity pattern in `K`
 and optionally a "force" vector.

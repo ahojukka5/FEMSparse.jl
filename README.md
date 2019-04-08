@@ -11,7 +11,7 @@ finite element simulations. In particular, we aim to provide support for
 sparse matrices which are fast to fill with dense local element matrices.
 In literature, this is called to *finite element assembly procedure*, where
 element local degrees of freedom are connected to the global degrees of freedom
-of model. Typically this procedure looks something similar to above:
+of model. Typically this procedure looks something similar to below:
 
 ```julia
 K = zeros(N, N)
@@ -41,7 +41,7 @@ requirement of available memory.
 
 ### Assembling to the sparse matrix format CSC
 
-### Naive attempt
+#### Naive attempt
 
 ```bash
 [ Info: Sparse matrix (CSC format):
@@ -51,14 +51,14 @@ requirement of available memory.
 `SparseMatrixCSC` is not suitable for (naive) assembly because the change of
 sparsity pattern is very expensive.
 
-#### Exisitng sparsity pattern
+#### Use of existing sparsity pattern
 
-However, if an existing "sparsity pattern" exist (a sparse matrix where the location sof all non zeros
+However, if an existing "sparsity pattern" exist (a sparse matrix where the locations of all non zeros
 have already been allocated) it is possible to efficiently assemble directly into it.
 
 For example,
 
-```
+```julia
 julia> K = sparse(Float64[1 0 1 1;
                           0 1 0 1;
                           1 0 1 0;
@@ -77,7 +77,7 @@ julia> K.rowval'
 
 Assembling into this sparsity pattern is now done by
 
-```
+```julia
 dofs1 = [1, 3]
 dofs2 = [2, 4]
 dofs3 = [1, 4]
@@ -90,7 +90,7 @@ for (dofs, Ke) in zip([dofs1, dofs2, dofs3], [Ke1, Ke2, Ke3])
 end
 ```
 
-resulting in that the content of `K` (here shown as a dense matrix for clarity) contains.
+resulting in that the content of `K` (here shown as a dense matrix for clarity) contains:
 
 ```
 4×4 Array{Float64,2}:
@@ -99,8 +99,6 @@ resulting in that the content of `K` (here shown as a dense matrix for clarity) 
  1.0  0.0  1.0  0.0
  1.0  1.0  0.0  2.0
 ```
-
-might be a sparsity pattern
 
 ### Assembling to the sparse matrix format COO
 
